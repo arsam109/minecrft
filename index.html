@@ -2,17 +2,10 @@
 <html lang="fa">
 <head>
 <meta charset="UTF-8">
-<title>Mini Craft Game</title>
+<title>Minecraft FPS Fixed</title>
 <style>
 body { margin:0; overflow:hidden; font-family:sans-serif; }
-#ui{
-  position:absolute;
-  top:10px; right:10px;
-  background:white;
-  padding:10px;
-  border-radius:8px;
-}
-#start{
+#start {
   position:absolute;
   width:100%; height:100%;
   background:black;
@@ -20,8 +13,15 @@ body { margin:0; overflow:hidden; font-family:sans-serif; }
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:20px;
+  font-size:22px;
   cursor:pointer;
+}
+#ui{
+  position:absolute;
+  top:10px; right:10px;
+  background:white;
+  padding:10px;
+  border-radius:8px;
 }
 </style>
 </head>
@@ -30,12 +30,137 @@ body { margin:0; overflow:hidden; font-family:sans-serif; }
 <div id="start">🎮 کلیک کن برای شروع</div>
 
 <div id="ui">
-⭐ امتیاز: <span id="score">0</span><br>
 WASD حرکت<br>
 ماوس نگاه<br>
-کلیک = ساخت بلاک<br>
-Right Click = شکستن
+کلیک = بلاک
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+
+<script>
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87CEEB);
+
+// camera
+const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
+
+// renderer
+const renderer = new THREE.WebGLRenderer();
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// light
+const light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.set(5,10,5);
+scene.add(light);
+
+// ground
+const ground = new THREE.Mesh(
+  new THREE.BoxGeometry(100,1,100),
+  new THREE.MeshStandardMaterial({color:0x2ecc71})
+);
+ground.position.y = -0.5;
+scene.add(ground);
+
+// player (IMPORTANT FIX)
+const player = new THREE.Object3D();
+player.position.set(0,1,5);
+scene.add(player);
+player.add(camera);
+camera.position.set(0,0,0);
+
+// blocks
+function addBlock(x,y,z){
+  const b = new THREE.Mesh(
+    new THREE.BoxGeometry(1,1,1),
+    new THREE.MeshStandardMaterial({color:0x8B4513})
+  );
+  b.position.set(x,y,z);
+  scene.add(b);
+}
+
+// world
+for(let i=-5;i<=5;i++){
+  addBlock(i,0.5,0);
+}
+
+// start + pointer lock
+document.getElementById("start").onclick = ()=>{
+  document.body.requestPointerLock();
+  document.getElementById("start").style.display="none";
+};
+
+// controls
+let keys = {};
+document.addEventListener("keydown", e=>keys[e.key.toLowerCase()]=true);
+document.addEventListener("keyup", e=>keys[e.key.toLowerCase()]=false);
+
+// look
+let yaw = 0;
+let pitch = 0;
+
+document.addEventListener("mousemove",(e)=>{
+  if(document.pointerLockElement !== document.body) return;
+
+  yaw -= e.movementX * 0.002;
+  pitch -= e.movementY * 0.002;
+
+  pitch = Math.max(-1.5, Math.min(1.5, pitch));
+
+  player.rotation.y = yaw;
+  camera.rotation.x = pitch;
+});
+
+// click block
+document.addEventListener("click", ()=>{
+  if(document.pointerLockElement !== document.body) return;
+
+  const dir = new THREE.Vector3();
+  camera.getWorldDirection(dir);
+
+  const pos = player.position.clone().add(dir.multiplyScalar(2));
+
+  addBlock(
+    Math.round(pos.x),
+    0.5,
+    Math.round(pos.z)
+  );
+});
+
+// 🔥 FIXED MOVEMENT (THIS IS WHY W WAS NOT WORKING BEFORE)
+function move(){
+  const speed = 0.15;
+
+  const forward = new THREE.Vector3(0,0,-1).applyAxisAngle(new THREE.Vector3(0,1,0), yaw);
+  const right = new THREE.Vector3(1,0,0).applyAxisAngle(new THREE.Vector3(0,1,0), yaw);
+
+  if(keys["w"]) player.position.addScaledVector(forward, speed);
+  if(keys["s"]) player.position.addScaledVector(forward, -speed);
+  if(keys["a"]) player.position.addScaledVector(right, -speed);
+  if(keys["d"]) player.position.addScaledVector(right, speed);
+
+  camera.position.copy(player.position);
+  camera.position.y += 0.5;
+}
+
+// resize
+window.addEventListener("resize",()=>{
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+
+// loop
+function animate(){
+  requestAnimationFrame(animate);
+  move();
+  renderer.render(scene,camera);
+}
+animate();
+</script>
+
+</body>
+</html>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 
