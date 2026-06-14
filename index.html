@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+<meta charset="UTF-8">
+<title>Mini Craft</title>
+<style>
+body { margin:0; overflow:hidden; font-family:sans-serif; background:#87CEEB; }
+#info { position:fixed; top:10px; right:10px; background:#fff; padding:10px; }
+.block { width:40px; height:40px; position:absolute; background:green; border:1px solid #000; }
+.player { width:40px; height:40px; position:absolute; background:red; }
+</style>
+</head>
+
+<body>
+
+<div id="info">
+حرکت: WASD یا Arrow Keys<br>
+کلیک: گذاشتن بلاک
+</div>
+
+<div id="player" class="player"></div>
+
+<script>
+let player = {x:200, y:200};
+let blocks = [];
+
+function drawPlayer(){
+  let p = document.getElementById("player");
+  p.style.left = player.x + "px";
+  p.style.top = player.y + "px";
+}
+
+document.addEventListener("keydown", (e)=>{
+  if(e.key=="w" || e.key=="ArrowUp") player.y -= 10;
+  if(e.key=="s" || e.key=="ArrowDown") player.y += 10;
+  if(e.key=="a" || e.key=="ArrowLeft") player.x -= 10;
+  if(e.key=="d" || e.key=="ArrowRight") player.x += 10;
+
+  drawPlayer();
+});
+
+document.addEventListener("click", (e)=>{
+  let b = document.createElement("div");
+  b.className = "block";
+  b.style.left = e.clientX + "px";
+  b.style.top = e.clientY + "px";
+  document.body.appendChild(b);
+});
+
+drawPlayer();
+</script>
+
+</body>
+</html>
