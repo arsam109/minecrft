@@ -2,24 +2,36 @@
 <html lang="fa">
 <head>
 <meta charset="UTF-8">
-<title>Mini Craft 3D</title>
+<title>Mini Craft FPS</title>
 <style>
-body { margin:0; overflow:hidden; }
+body { margin:0; overflow:hidden; font-family:sans-serif; }
 #ui {
   position: absolute;
   top: 10px;
   right: 10px;
   background: rgba(255,255,255,0.9);
   padding: 10px;
-  font-family: sans-serif;
   border-radius: 8px;
+}
+#start {
+  position: absolute;
+  top:0; left:0;
+  width:100%; height:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:black;
+  color:white;
+  font-size:20px;
+  cursor:pointer;
 }
 </style>
 </head>
 <body>
 
+<div id="start">برای شروع کلیک کن 🎮</div>
+
 <div id="ui">
-🎮 Mini Craft 3D<br>
 WASD = حرکت<br>
 ماوس = نگاه<br>
 کلیک = بلاک
@@ -28,19 +40,11 @@ WASD = حرکت<br>
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 
 <script>
-// Scene
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87CEEB);
 
-// Camera
-const camera = new THREE.PerspectiveCamera(
-  75,
-  window.innerWidth / window.innerHeight,
-  0.1,
-  1000
-);
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
 
-// Renderer
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
@@ -58,14 +62,13 @@ const ground = new THREE.Mesh(
 ground.position.y = -0.5;
 scene.add(ground);
 
-// Player
+// Player object (FPS controller)
 const player = new THREE.Object3D();
+player.position.y = 1;
 scene.add(player);
-
-camera.position.set(0,2,5);
 player.add(camera);
 
-// Simple blocks
+// Blocks
 function addBlock(x,y,z){
   const block = new THREE.Mesh(
     new THREE.BoxGeometry(1,1,1),
@@ -75,25 +78,44 @@ function addBlock(x,y,z){
   scene.add(block);
 }
 
-// some starter blocks
-addBlock(2,0.5,2);
-addBlock(-2,0.5,2);
-addBlock(2,0.5,-2);
+// starter blocks
+for(let i=0;i<5;i++){
+  addBlock(i-2,0.5,2);
+}
 
 // Controls
 let keys = {};
 document.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
 document.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
 
-// Mouse look
-let yaw = 0;
-document.addEventListener("mousemove", (e)=>{
-  yaw -= e.movementX * 0.002;
-  player.rotation.y = yaw;
+// Pointer lock (VERY IMPORTANT)
+const startScreen = document.getElementById("start");
+
+startScreen.addEventListener("click", ()=>{
+  document.body.requestPointerLock();
+  startScreen.style.display="none";
 });
 
-// Click = place block
+let yaw = 0;
+let pitch = 0;
+
+// mouse look
+document.addEventListener("mousemove", (e)=>{
+  if(document.pointerLockElement !== document.body) return;
+
+  yaw -= e.movementX * 0.002;
+  pitch -= e.movementY * 0.002;
+
+  pitch = Math.max(-1.5, Math.min(1.5, pitch));
+
+  player.rotation.y = yaw;
+  camera.rotation.x = pitch;
+});
+
+// click = block
 document.addEventListener("click", ()=>{
+  if(document.pointerLockElement !== document.body) return;
+
   const dir = new THREE.Vector3();
   camera.getWorldDirection(dir);
 
@@ -105,7 +127,7 @@ document.addEventListener("click", ()=>{
   );
 });
 
-// Movement
+// movement
 function move(){
   const speed = 0.1;
 
@@ -123,18 +145,18 @@ function move(){
   if(keys["a"]) player.position.addScaledVector(right, -speed);
 }
 
-// Resize
+// resize
 window.addEventListener("resize", ()=>{
   camera.aspect = window.innerWidth/window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// Loop
+// loop
 function animate(){
   requestAnimationFrame(animate);
   move();
-  renderer.render(scene, camera);
+  renderer.render(scene,camera);
 }
 
 animate();
