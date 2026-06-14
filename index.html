@@ -2,26 +2,24 @@
 <html lang="fa">
 <head>
 <meta charset="UTF-8">
-<title>Mini Craft FPS</title>
+<title>Mini Craft Game</title>
 <style>
 body { margin:0; overflow:hidden; font-family:sans-serif; }
-#ui {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background: rgba(255,255,255,0.9);
-  padding: 10px;
-  border-radius: 8px;
+#ui{
+  position:absolute;
+  top:10px; right:10px;
+  background:white;
+  padding:10px;
+  border-radius:8px;
 }
-#start {
-  position: absolute;
-  top:0; left:0;
+#start{
+  position:absolute;
   width:100%; height:100%;
+  background:black;
+  color:white;
   display:flex;
   align-items:center;
   justify-content:center;
-  background:black;
-  color:white;
   font-size:20px;
   cursor:pointer;
 }
@@ -29,12 +27,14 @@ body { margin:0; overflow:hidden; font-family:sans-serif; }
 </head>
 <body>
 
-<div id="start">برای شروع کلیک کن 🎮</div>
+<div id="start">🎮 کلیک کن برای شروع</div>
 
 <div id="ui">
-WASD = حرکت<br>
-ماوس = نگاه<br>
-کلیک = بلاک
+⭐ امتیاز: <span id="score">0</span><br>
+WASD حرکت<br>
+ماوس نگاه<br>
+کلیک = ساخت بلاک<br>
+Right Click = شکستن
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
@@ -49,62 +49,69 @@ const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// Light
+// light
 const light = new THREE.DirectionalLight(0xffffff, 1);
 light.position.set(5,10,5);
 scene.add(light);
 
-// Ground
+// ground
 const ground = new THREE.Mesh(
-  new THREE.BoxGeometry(50,1,50),
+  new THREE.BoxGeometry(60,1,60),
   new THREE.MeshStandardMaterial({color:0x2ecc71})
 );
 ground.position.y = -0.5;
 scene.add(ground);
 
-// Player object (FPS controller)
+// player
 const player = new THREE.Object3D();
 player.position.y = 1;
 scene.add(player);
 player.add(camera);
 
-// Blocks
-function addBlock(x,y,z){
-  const block = new THREE.Mesh(
+// blocks
+let blocks = [];
+
+function addBlock(x,y,z,color=0x8B4513){
+  const b = new THREE.Mesh(
     new THREE.BoxGeometry(1,1,1),
-    new THREE.MeshStandardMaterial({color:0x8B4513})
+    new THREE.MeshStandardMaterial({color})
   );
-  block.position.set(x,y,z);
-  scene.add(block);
+  b.position.set(x,y,z);
+  scene.add(b);
+  blocks.push(b);
+  return b;
 }
 
-// starter blocks
-for(let i=0;i<5;i++){
-  addBlock(i-2,0.5,2);
+// starter world
+for(let i=0;i<10;i++){
+  addBlock(i-5,0.5,0);
 }
 
-// Controls
-let keys = {};
-document.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
-document.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
+// score
+let score = 0;
+function updateScore(){
+  document.getElementById("score").innerText = score;
+}
 
-// Pointer lock (VERY IMPORTANT)
-const startScreen = document.getElementById("start");
-
-startScreen.addEventListener("click", ()=>{
+// start screen + pointer lock
+document.getElementById("start").onclick = ()=>{
   document.body.requestPointerLock();
-  startScreen.style.display="none";
-});
+  document.getElementById("start").style.display="none";
+};
 
-let yaw = 0;
-let pitch = 0;
+// controls
+let keys = {};
+document.addEventListener("keydown", e=>keys[e.key.toLowerCase()]=true);
+document.addEventListener("keyup", e=>keys[e.key.toLowerCase()]=false);
 
 // mouse look
-document.addEventListener("mousemove", (e)=>{
+let yaw=0, pitch=0;
+
+document.addEventListener("mousemove",(e)=>{
   if(document.pointerLockElement !== document.body) return;
 
-  yaw -= e.movementX * 0.002;
-  pitch -= e.movementY * 0.002;
+  yaw -= e.movementX*0.002;
+  pitch -= e.movementY*0.002;
 
   pitch = Math.max(-1.5, Math.min(1.5, pitch));
 
@@ -112,7 +119,7 @@ document.addEventListener("mousemove", (e)=>{
   camera.rotation.x = pitch;
 });
 
-// click = block
+// place block
 document.addEventListener("click", ()=>{
   if(document.pointerLockElement !== document.body) return;
 
@@ -120,36 +127,62 @@ document.addEventListener("click", ()=>{
   camera.getWorldDirection(dir);
 
   const pos = player.position.clone().add(dir.multiplyScalar(2));
+
   addBlock(
     Math.round(pos.x),
     0.5,
-    Math.round(pos.z)
+    Math.round(pos.z),
+    0x8B4513
   );
+
+  score++;
+  updateScore();
+});
+
+// break block (right click)
+document.addEventListener("contextmenu",(e)=>{
+  e.preventDefault();
+
+  const ray = new THREE.Raycaster();
+  ray.setFromCamera(new THREE.Vector2(0,0), camera);
+
+  const hits = ray.intersectObjects(blocks);
+
+  if(hits.length>0){
+    scene.remove(hits[0].object);
+    blocks = blocks.filter(b=>b!==hits[0].object);
+    score++;
+    updateScore();
+  }
 });
 
 // movement
 function move(){
-  const speed = 0.1;
+  const speed=0.12;
 
   const forward = new THREE.Vector3();
   camera.getWorldDirection(forward);
-  forward.y = 0;
+  forward.y=0;
   forward.normalize();
 
   const right = new THREE.Vector3();
-  right.crossVectors(forward, new THREE.Vector3(0,1,0));
+  right.crossVectors(forward,new THREE.Vector3(0,1,0));
 
-  if(keys["w"]) player.position.addScaledVector(forward, speed);
-  if(keys["s"]) player.position.addScaledVector(forward, -speed);
-  if(keys["d"]) player.position.addScaledVector(right, speed);
-  if(keys["a"]) player.position.addScaledVector(right, -speed);
+  if(keys["w"]) player.position.addScaledVector(forward,speed);
+  if(keys["s"]) player.position.addScaledVector(forward,-speed);
+  if(keys["a"]) player.position.addScaledVector(right,-speed);
+  if(keys["d"]) player.position.addScaledVector(right,speed);
+
+  camera.position.x = player.position.x;
+  camera.position.z = player.position.z;
+  camera.position.y = player.position.y + 0.5;
 }
 
 // resize
-window.addEventListener("resize", ()=>{
-  camera.aspect = window.innerWidth/window.innerHeight;
+window.addEventListener("resize",()=>{
+  camera.aspect=window.innerWidth/window.innerHeight;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setSize(window.innerWidth,window.innerHeight);
 });
 
 // loop
@@ -158,7 +191,6 @@ function animate(){
   move();
   renderer.render(scene,camera);
 }
-
 animate();
 </script>
 
